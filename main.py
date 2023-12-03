@@ -1,6 +1,7 @@
 from flask import Flask
 from routes.user.user_route import user
 from routes.admin.admin_route import admin
+import logging
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key' 
@@ -20,4 +21,4 @@ app.register_blueprint(admin)
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True,port=8080)
