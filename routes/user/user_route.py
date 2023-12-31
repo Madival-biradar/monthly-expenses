@@ -73,7 +73,7 @@ def registration():
 
 
 #to join group just needs to give existing team_id
-@user.route('/joinGroup',methods=['POST',])
+@user.route('/joinGroup',methods=['POST','GET'])
 @login_required
 def join_group(current_user):
     user_data = user_fetch(username=current_user,password=None)
@@ -88,31 +88,36 @@ def join_group(current_user):
     if not teamdetails:
         return jsonify({"error":"Entred Team id not exists"})
     
-    # if team_id exists--->needs to add his user_id to team_members and update in users table team_id
-    connection = connection_pool.get_connection()
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(f'''
-                UPDATE {USERS_TABLE}
-                SET team_id=%s
-                WHERE userid = %s;''', (exist_team_id, user_id))
-        connection.commit()
-        print('data update to users table successfully')
+    if request.method=='GET':
+        return jsonify({'teamDetails':teamdetails})
+    else:
 
-        # after successfully added the users to users table---> adding in team_membesr
-        with connection.cursor() as cursor:
-            cursor.execute(f'''
-                        INSERT INTO {TEAM_MEMBERS_TABLE} (userid, team_id,joinedon)
-                        VALUES (%s, %s, CURRENT_TIMESTAMP)
-                        ''', (user_id, exist_team_id))
-        connection.commit()
-        print('data isnerted first time into teammebers table successfully')
-    except Exception as e:
-        print(e)
-    finally:
-        connection_pool.put_connection(connection) 
     
-    return jsonify({'msg':"Ur successfully joined","team_id":exist_team_id})
+    # if team_id exists--->needs to add his user_id to team_members and update in users table team_id
+        connection = connection_pool.get_connection()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(f'''
+                    UPDATE {USERS_TABLE}
+                    SET team_id=%s
+                    WHERE userid = %s;''', (exist_team_id, user_id))
+            connection.commit()
+            print('data update to users table successfully')
+
+            # after successfully added the users to users table---> adding in team_membesr
+            with connection.cursor() as cursor:
+                cursor.execute(f'''
+                            INSERT INTO {TEAM_MEMBERS_TABLE} (userid, team_id,joinedon)
+                            VALUES (%s, %s, CURRENT_TIMESTAMP)
+                            ''', (user_id, exist_team_id))
+            connection.commit()
+            print('data isnerted first time into teammebers table successfully')
+        except Exception as e:
+            print(e)
+        finally:
+            connection_pool.put_connection(connection) 
+        
+        return jsonify({'msg':"Ur successfully joined","team_id":exist_team_id})
 
 
 
@@ -149,15 +154,6 @@ def login():
     
     return jsonify({'error':"error during the JWT token"})
 
-
-
-@user.route('/ViewOptions', methods=['GET','POST',])
-@login_required
-def view_all_options(current_user):
-    print('!!!!!!!!!!!!!!!!')
-    print(current_user)
-    print('verified')
-    return render_template('viewall.html')
 
 #api for adding the all expenses:
 #if get---> needs to give all expenses based on his team
