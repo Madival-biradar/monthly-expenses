@@ -70,7 +70,7 @@ def user_fetch(username, password=None):
 
 
 # method to fetch all expenses based on his team--id
-def fetch_expenses_by_team(team_id,is_approved=None):
+def fetch_expenses_by_team(team_id,is_approved=False):
     if is_approved == False :
         print('is_approved', is_approved)
         sql_query = f''' SELECT * FROM {EXPENSE_TABLE} WHERE is_approved=False and team_id=%s '''
@@ -110,6 +110,8 @@ def team_id_check(team_id):
         with connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
             cursor.execute(sql_query,(team_id,))
             rows = cursor.fetchall()
+            print('11111111111111')
+            print(rows)
     except Exception as e:
         print(e)
 
@@ -147,3 +149,61 @@ def user_fetch_by_pnoneno(phone_no):
     else:
         return False
 
+
+
+#functionTocheck the user is already in team_members,
+#functions to fetch users all teaminformations
+def team_details_fetch_for_user(team_admin,data=False):
+    print('^^^^^^',team_admin)
+    sql_params = []
+    if not data:
+        where_cond = ''' WHERE team_admin=%s '''
+    else:
+        where_cond = ''' WHERE team_admin=%s order by team_created_on desc limit  1 '''
+    sql_params.append(team_admin)
+    connection = connection_pool.get_connection()
+    fetch_query = f''' SELECT * from {TEAM_TABLE} {where_cond}'''
+    print(fetch_query)
+    try:
+        # with connection.cursor() as cursor:
+        with connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+            cursor.execute(fetch_query, tuple(sql_params))  # Pass as a single tuple
+            row = cursor.fetchall()
+            print('*************')
+            print(row)
+        print('data fetched  successfully')
+    except Exception as e:
+        print(e)
+    finally:
+        connection_pool.put_connection(connection)
+    if row:
+        return row
+    else:
+        return False
+
+
+#functions to get the all team_ids,userids from the team_members_table
+def team_member_details_fetch_for_user(userid):
+    print('^^^^^^',userid)
+    sql_params = []
+    where_cond = ''' WHERE userid=%s '''
+    connection = connection_pool.get_connection()
+    sql_params.append(userid)
+    fetch_query = f''' SELECT * from {TEAM_MEMBERS_TABLE} {where_cond}'''
+    print(fetch_query)
+    try:
+        # with connection.cursor() as cursor:
+        with connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+            cursor.execute(fetch_query, tuple(sql_params))  # Pass as a single tuple
+            row = cursor.fetchall()
+            print('*************')
+            print(row)
+        print('data fetched  successfully')
+    except Exception as e:
+        print(e)
+    finally:
+        connection_pool.put_connection(connection)
+    if row:
+        return row
+    else:
+        return False

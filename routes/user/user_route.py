@@ -5,7 +5,7 @@ import datetime
 import pandas as pd
 from db_connection import PostgreSQLConnectionPool
 from utils import login_required, user_fetch, fetch_expenses_by_team,\
-                    team_id_check,user_fetch_by_pnoneno
+                    team_id_check,user_fetch_by_pnoneno, team_details_fetch_for_user, team_member_details_fetch_for_user
 
 
 from constants import db_host, db_port, db_name, db_user, db_password, pool_size_config,\
@@ -73,24 +73,30 @@ def registration():
 
 
 #to join group just needs to give existing team_id
+# 1. If user joined first time---> needs to add his userid and teamid in team_members
+    # if userid present in team_members, not add 
 @user.route('/joinGroup',methods=['POST','GET'])
 @login_required
 def join_group(current_user):
     user_data = user_fetch(username=current_user,password=None)
     user_id = user_data.get('userid')
     user_team_id = user_data.get('team_id')
+    user_team_details = team_details_fetch_for_user(team_admin=user_id)
     print('*******************')
     print(user_id, user_team_id)
-    exist_team_id = request.form.get('team_id')
-    teamdetails = team_id_check(team_id=exist_team_id)
-    print('11111111111111111')
-    print(teamdetails)
-    if not teamdetails:
-        return jsonify({"error":"Entred Team id not exists"})
-    
+
+#   if user already in users table with
+
     if request.method=='GET':
-        return jsonify({'teamDetails':teamdetails})
+        return jsonify({'teamDetails':user_team_details})
     else:
+        exist_team_id = request.form.get('team_id')
+        teamdetails = team_id_check(team_id=exist_team_id)
+        print('555555555555555')
+        print(teamdetails)
+        if not teamdetails:
+            return jsonify({"error":"Entred Team id not exists"})
+    
 
     
     # if team_id exists--->needs to add his user_id to team_members and update in users table team_id
@@ -105,13 +111,44 @@ def join_group(current_user):
             print('data update to users table successfully')
 
             # after successfully added the users to users table---> adding in team_membesr
-            with connection.cursor() as cursor:
-                cursor.execute(f'''
-                            INSERT INTO {TEAM_MEMBERS_TABLE} (userid, team_id,joinedon)
-                            VALUES (%s, %s, CURRENT_TIMESTAMP)
-                            ''', (user_id, exist_team_id))
-            connection.commit()
-            print('data isnerted first time into teammebers table successfully')
+            #needs to check if user details not in team_members table add if there dont add
+            user_in_team_members_table = team_member_details_fetch_for_user(userid=user_id)
+            print('111111111111111')
+            team_ids_data = {}
+            teamids=[]
+            for team_info in user_in_team_members_table:
+                print('777777777777777777')
+                print(team_info)
+                user_id = team_info.get('userid')  # Assuming 'team_admin' contains user ID
+                # team_id = team_info.get('team_id')
+                if team_info.get('team_id') not in teamids:
+                    teamids.append(team_info.get('team_id'))
+                else:
+                    pass
+            team_ids_data[user_id] = teamids
+            print('333333333')
+            print(team_ids_data)
+
+            print(user_in_team_members_table)
+            print('hiiiii')
+            print(exist_team_id)
+            print(type((exist_team_id)))
+            # if exist_team_id not in team_ids_data.values():
+            if any(int(exist_team_id) in value_list for value_list in team_ids_data.values()):
+                return jsonify({"msg":"your already part of this team"})
+
+            else:
+                with connection.cursor() as cursor:
+                    cursor.execute(f'''
+                                INSERT INTO {TEAM_MEMBERS_TABLE} (userid, team_id,joinedon)
+                                VALUES (%s, %s, CURRENT_TIMESTAMP)
+                                ''', (user_id, exist_team_id))
+                connection.commit()
+                print('data added successfully')
+                # pass
+
+
+
         except Exception as e:
             print(e)
         finally:
@@ -164,7 +201,13 @@ def add_expenses(current_user):
     user_data = user_fetch(username=current_user, password=None)
     user_id = user_data.get('userid')
     phone_no  = user_data.get('phone_no')
-    team_id = user_data.get('team_id')
+    #for fetching team_id from team_members+table using userid
+    team_id_data = team_member_details_fetch_for_user(user_id)
+    for team_info in team_id_data:
+        print('777777777777777777')
+        print(team_info)
+        team_id = team_info.get('team_id')  # Assuming 'team_admin' contains user ID
+
     if request.method == 'GET':
         print('inside GET method')
         all_expenses = fetch_expenses_by_team(team_id,is_approved=None)
@@ -199,6 +242,18 @@ def add_expenses(current_user):
     return jsonify({'msg':"Expense added successfully"})
 
 
+
+
+#fetaching the all users from the particular groups:
+@user.route('/getallusers_team_id',methods=["POST","GET"])
+@login_required
+def getallusers_team_id(current_user):
+    user_data = user_fetch(username=current_user,password=None)
+    user_id = user_data.get('userid')
+    user_team_id = user_data.get('team_id')
+    user_team_details = team_details_fetch_for_user(team_admin=user_id)
+    print('*******************')
+    print(user_id, user_team_id)
 
 
 

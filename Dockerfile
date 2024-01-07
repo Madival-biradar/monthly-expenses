@@ -1,13 +1,16 @@
 # Use the official Python image as the base image
-FROM python:3.10-slim-buster
+FROM python:3.11-slim
 
 # Set the working directory
-WORKDIR /app
+WORKDIR /code
 
 # Copy the requirements file to the working directory
 COPY requirements.txt .
 
+RUN python -m pip install --upgrade pip
+
 # Install the required packages
+# RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application files to the working directory

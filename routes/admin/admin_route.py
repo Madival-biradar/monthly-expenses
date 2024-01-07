@@ -6,7 +6,8 @@ import pandas as pd
 import numpy as np
 from db_connection import PostgreSQLConnectionPool
 from utils import login_required, user_fetch, fetch_expenses_by_team,\
-                    team_id_check,user_fetch_by_pnoneno
+                    team_id_check,user_fetch_by_pnoneno, team_details_fetch_for_user, \
+                    team_member_details_fetch_for_user
 
 
 from constants import db_host, db_port, db_name, db_user, db_password, pool_size_config,\
@@ -28,16 +29,40 @@ def create_group(current_user):
     team_description = request.form.get('team_description')
 
     #needs to insert--->team table with--->adminuserid--->
+    # if group created we needs to make him admin
+    # we needs to make transction
+    users_table_admin_update_where_cond = f''' WHERE userid=%s '''
+    users_table_admin_update_query = f''' UPDATE {USERS_TABLE} SET is_admin=TRUE 
+                                            {users_table_admin_update_where_cond} '''
+
+    team_insert_query = f''' INSERT INTO {TEAM_TABLE} (team_name, team_size, 
+                                    team_description,team_admin, team_created_on)
+                                    VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP) ''' 
+    team_sql_param = [team_name, team_size, team_description, user_id] 
+
+
+    team_members_insert_query =  f''' INSERT INTO {TEAM_MEMBERS_TABLE} 
+                                        (userid, team_id,joinedon)
+                                        VALUES (%s, %s, CURRENT_TIMESTAMP) '''                                                               
     connection = connection_pool.get_connection()
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f'''
-                        INSERT INTO {TEAM_TABLE} (team_name, team_size, team_description,
-                        team_admin, team_created_on)
-                        VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
-                        ''', (team_name, team_size, team_description, user_id))
+            cursor.execute(users_table_admin_update_query, (user_id,))
+
+            cursor.execute(team_insert_query, team_sql_param)
         connection.commit()
         print('data added successfully')
+
+        team_id_fetch = team_details_fetch_for_user(team_admin=user_id,data=True)
+        team_id_data = []
+        for i in team_id_fetch:   
+            team_id_data.append(i.get('team_id'))
+
+        with connection.cursor() as cursor:
+            cursor.execute(team_members_insert_query,(user_id, team_id_data[0]))
+        connection.commit()
+        print('data added successfully')
+
     except Exception as e:
         print(e)
     finally:
@@ -56,7 +81,7 @@ def approve_expenses(current_user):
         return jsonify({"error":"U dont have access to do it"})
     if request.method == 'GET':
         print('inside GET method')
-        all_expenses = fetch_expenses_by_team(team_id=user_data.get('team_id'),is_approved=None)
+        all_expenses = fetch_expenses_by_team(team_id=user_data.get('team_id'),is_approved=False)
         if not all_expenses:
             return jsonify({"error":"Ur Team dont have any expenses YET!!, Be First to add!!"})
         df = pd.DataFrame(all_expenses)
@@ -152,9 +177,17 @@ def add_members(current_user):
 @login_required
 def calculate_expenses(current_user):
     user_data = user_fetch(username=current_user, password=None)
-    team_id = user_data.get('team_id')
+    user_id = user_data.get('userid')
+
+    team_id_data = team_member_details_fetch_for_user(user_id)
+    for team_info in team_id_data:
+        print('777777777777777777')
+        print(team_info)
+        team_id = team_info.get('team_id') 
+    print(team_id)
     
     expense_transdata = fetch_expenses_by_team(team_id,is_approved=True)
+    print(expense_transdata)
     team_data = team_id_check(team_id)
 
     team_size = team_data[0].get('team_size')
