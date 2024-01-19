@@ -124,11 +124,18 @@ def team_id_check(team_id):
 
 
 #fetch user by mobilenumber
-def user_fetch_by_pnoneno(phone_no):
-    print('^^^^^^',phone_no)
+def user_fetch_by_pnoneno(phone_no,password=None):
+    print('^^^^^^',phone_no,password)
     sql_params = []
-    where_cond = ''' WHERE phone_no=%s '''
-    sql_params.append(phone_no)
+    if password:
+        where_cond = ''' WHERE phone_no=%s and userpassword=%s'''
+        sql_params.extend((phone_no,password))
+        print(sql_params)
+
+    else:
+        where_cond = ''' WHERE phone_no=%s '''
+        sql_params.append(phone_no)
+        print(sql_params)
     connection = connection_pool.get_connection()
     fetch_query = f''' SELECT * from {USERS_TABLE} {where_cond}'''
     print(fetch_query)

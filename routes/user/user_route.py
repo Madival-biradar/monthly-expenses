@@ -168,18 +168,18 @@ def login():
     if request.method == 'GET':
         return render_template('login.html')
     else:
-        username = request.form.get('username')
+        phone_no = request.form.get('phonenumber')
         password = request.form.get('password')
-        print(username,password)
+        print(phone_no,password)
 
-        user_data = user_fetch(username=username,password=password)
+        user_data = user_fetch_by_pnoneno(phone_no=phone_no,password=password)
         print('*************',user_data)
         if not user_data:
             return jsonify({'error':'User Not Found'},404)
         
         if user_data:
             try:
-                token = jwt.encode({'username': username,'password':password, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)},
+                token = jwt.encode({'phone_no': phone_no,'password':password, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)},
                                 current_app.config['SECRET_KEY'], algorithm='HS256')
                 return jsonify({'access_token': token})
                 # localStorage.setItem('token', 'your_jwt_token_here');
