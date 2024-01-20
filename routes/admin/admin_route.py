@@ -21,12 +21,20 @@ admin = Blueprint('admin', __name__, url_prefix='/')
 @admin.route('/CreateGroup',methods=['POST',])
 @login_required
 def create_group(current_user):
-    user_data = user_fetch(username=current_user, password=None)
+    # user_data = user_fetch(username=current_user, password=None)
+    user_data = user_fetch_by_pnoneno(phone_no=current_user,password=None)
     user_id = user_data.get('userid')
 
     team_name = request.form.get('team_name')
     team_size = request.form.get('team_size')
     team_description = request.form.get('team_description')
+
+    #if team name dupliacted based on user
+    team_name_details = team_details_fetch_for_user(team_admin=user_id) 
+    if  team_name_details:
+        for i in team_name_details:  
+            if team_name == i.get('team_name'):
+                return jsonify({'msg':"team name already exists!!",'status_code':400})
 
     #needs to insert--->team table with--->adminuserid--->
     # if group created we needs to make him admin

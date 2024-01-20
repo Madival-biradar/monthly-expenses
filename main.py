@@ -2,8 +2,10 @@ from flask import Flask
 from routes.user.user_route import user
 from routes.admin.admin_route import admin
 import logging
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 app.config['SECRET_KEY'] = 'your-secret-key' 
 
 

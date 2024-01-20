@@ -5,7 +5,7 @@ import datetime
 import pandas as pd
 from db_connection import PostgreSQLConnectionPool
 from utils import login_required, user_fetch, fetch_expenses_by_team,\
-                    team_id_check,user_fetch_by_pnoneno, team_details_fetch_for_user, team_member_details_fetch_for_user
+                    team_id_check,user_fetch_by_pnoneno, team_details_fetch_for_user, team_member_details_fetch_for_user, fetch_expenses_for_user
 
 
 from constants import db_host, db_port, db_name, db_user, db_password, pool_size_config,\
@@ -75,20 +75,29 @@ def registration():
 #to join group just needs to give existing team_id
 # 1. If user joined first time---> needs to add his userid and teamid in team_members
     # if userid present in team_members, not add 
+#2. if team id not exists ---> team ids not exist
+
 @user.route('/joinGroup',methods=['POST','GET'])
 @login_required
 def join_group(current_user):
-    user_data = user_fetch(username=current_user,password=None)
+    # user_data = user_fetch(username=current_user,password=None)
+    user_data = user_fetch_by_pnoneno(phone_no=current_user,password=None)
     user_id = user_data.get('userid')
     user_team_id = user_data.get('team_id')
     user_team_details = team_details_fetch_for_user(team_admin=user_id)
-    print('*******************')
-    print(user_id, user_team_id)
+    print(user_team_details)
 
 #   if user already in users table with
 
     if request.method=='GET':
-        return jsonify({'teamDetails':user_team_details})
+        if not user_team_details:
+            return  jsonify({'teamDetails':{}})
+
+        data = pd.DataFrame(user_team_details)
+        data['team_created_on'] = pd.to_datetime(data['team_created_on']).dt.strftime('%Y-%m-%d')
+        data = data.drop(['team_admin'],axis=1)
+        output = data.to_dict(orient='records')
+        return jsonify({'teamDetails':output})
     else:
         exist_team_id = request.form.get('team_id')
         teamdetails = team_id_check(team_id=exist_team_id)
@@ -175,21 +184,21 @@ def login():
         user_data = user_fetch_by_pnoneno(phone_no=phone_no,password=password)
         print('*************',user_data)
         if not user_data:
-            return jsonify({'error':'User Not Found'},404)
+            return jsonify({'error':'User Not Found'}),404
         
         if user_data:
             try:
                 token = jwt.encode({'phone_no': phone_no,'password':password, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)},
                                 current_app.config['SECRET_KEY'], algorithm='HS256')
-                return jsonify({'access_token': token})
+                return jsonify({'access_token': token,'username':user_data})
                 # localStorage.setItem('token', 'your_jwt_token_here');
                 # return redirect(url_for('view_all_options', token=token))
             except Exception as e:
                 print(e)
         else:
-            return jsonify({'message': 'Invalid credentials'}), 401
+            return jsonify({'message': 'Invalid credentials'}), 404
     
-    return jsonify({'error':"error during the JWT token"})
+    return jsonify({'error':"error during the JWT token"}),404
 
 
 #api for adding the all expenses:
@@ -198,19 +207,15 @@ def login():
 @login_required
 def add_expenses(current_user):
 
-    user_data = user_fetch(username=current_user, password=None)
+    user_data = user_fetch_by_pnoneno(phone_no=current_user,password=None)
+    print(user_data)
     user_id = user_data.get('userid')
     phone_no  = user_data.get('phone_no')
-    #for fetching team_id from team_members+table using userid
-    team_id_data = team_member_details_fetch_for_user(user_id)
-    for team_info in team_id_data:
-        print('777777777777777777')
-        print(team_info)
-        team_id = team_info.get('team_id')  # Assuming 'team_admin' contains user ID
 
     if request.method == 'GET':
         print('inside GET method')
-        all_expenses = fetch_expenses_by_team(team_id,is_approved=None)
+        # all_expenses = fetch_expenses_by_team(team_id,is_approved=None)
+        all_expenses  = fetch_expenses_for_user(user_id=user_id)
         if not all_expenses:
             return jsonify({"error":"Ur Team dont have any expenses YET!!, Be First to add!!"})
         df = pd.DataFrame(all_expenses)
@@ -223,6 +228,7 @@ def add_expenses(current_user):
         expense_type = request.form.get('expense_type')
         amount = request.form.get('amount_paid')
         description = request.form.get('description')
+        team_id_user  = request.form.get('team_id')
         connection = connection_pool.get_connection()
         try:
             with connection.cursor() as cursor:
@@ -232,7 +238,7 @@ def add_expenses(current_user):
                             INSERT INTO {EXPENSE_TABLE} (transaction_name, transaction_description, user_id,
                             amount, team_id, createdon, is_approved, approved_on)
                             VALUES (%s, %s, %s, %s,%s,CURRENT_TIMESTAMP, NULL, NULL)
-                            ''', (expense_type, description,user_id, amount,team_id))
+                            ''', (expense_type, description,user_id, amount,team_id_user))
             connection.commit()
             print('expense_tranctiontable inserted firsttime---> successfully')
         except Exception as e:

@@ -28,7 +28,9 @@ def login_required(f):
 
         try:
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-            current_user = data['username']
+            print('3333333333')
+            print(data)
+            current_user = data['phone_no']
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token has expired'}), 401
         except jwt.InvalidTokenError:
@@ -43,11 +45,13 @@ def login_required(f):
 def user_fetch(username, password=None):
     print('^^^^^^',username,password)
     sql_params = []
-    where_cond = ''' WHERE username=%s '''
+    # where_cond = ''' WHERE username=%s '''
     sql_params.append(username)
     if password is not None:
         where_cond = ''' WHERE username=%s AND userpassword=%s'''
         sql_params.append(password)
+    else:
+        where_cond = ''' WHERE username=%s '''
     connection = connection_pool.get_connection()
     fetch_query = f''' SELECT * from {USERS_TABLE} {where_cond}'''
     print(fetch_query)
@@ -88,7 +92,7 @@ def fetch_expenses_by_team(team_id,is_approved=False):
         with connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
             cursor.execute(sql_query, (team_id,))  # Pass as a single tuple
             row = cursor.fetchall()
-            # print(row)
+            print(row)
             print('data fetched  successfully')
     except Exception as e:
         print(e)
@@ -98,6 +102,27 @@ def fetch_expenses_by_team(team_id,is_approved=False):
         return row
     else:
         return False
+
+# method to fetch all expenses based on his userid
+def fetch_expenses_for_user(user_id):
+    sql_query = f''' SELECT * FROM {EXPENSE_TABLE} WHERE user_id=%s '''
+    print(sql_query)
+    connection = connection_pool.get_connection()
+    try:
+        with connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+            cursor.execute(sql_query, (user_id,))  # Pass as a single tuple
+            row = cursor.fetchall()
+            print(row)
+            print('data fetched  successfully')
+    except Exception as e:
+        print(e)
+    finally:
+        connection_pool.put_connection(connection)
+    if row:
+        return row
+    else:
+        return False
+
 
 
 #to check team exists or not in team table
