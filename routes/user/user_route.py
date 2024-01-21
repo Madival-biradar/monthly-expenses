@@ -261,6 +261,44 @@ def getallusers_team_id(current_user):
     print(user_id, user_team_id)
 
 
+@user.route('/update_user_details', methods=['GET','POST'])
+@login_required
+def update_user_details(current_user):
+    user_data = user_fetch_by_pnoneno(phone_no=current_user,password=None)
+    user_id = user_data.get('userid')
+    phone_no  = user_data.get('phone_no')
+    if request.method == 'GET':
+        data = pd.DataFrame(user_data,index=[0])
+        data['updatedon'] = pd.to_datetime(data['updatedon']).dt.strftime('%Y-%m-%d')
+        columns_to_drop=['userid','createdby','createdon','updatedby','is_admin','team_id']
+        data = data.drop(columns_to_drop, axis=1)
+        output = data.to_dict(orient='records')
+        return jsonify({'user_details':output})
+    
+    if request.method == 'POST':
+        user_name = request.form.get('username')
+        password = request.form.get('password')
+        email = request.form.get('email')
+        phone_no = request.form.get('phone_number')
+
+        connection = connection_pool.get_connection()
+        try:
+            with connection.cursor() as cursor:
+                updated_on = datetime.datetime.now()
+                cursor.execute(f'''
+                    UPDATE {USERS_TABLE} SET username=%s, userpassword=%s , email=%s,
+                     phone_no=%s, updatedon=%s
+                    WHERE userid = %s;''', (user_name, password,email,phone_no,updated_on,user_id))
+            connection.commit()
+            print('data update to users table successfully')
+        except Exception as e:
+            print(e)
+            return jsonify({'error':"error during update"})
+        finally:
+            connection_pool.put_connection(connection)
+        return jsonify({'msg':"Ur details updated successfully!!"})
+
+
 
 
 

@@ -135,22 +135,23 @@ def approve_expenses(current_user):
 @admin.route('/AddMember',methods=['GET','POST'])
 @login_required
 def add_members(current_user):
-    user_data = user_fetch(username=current_user, password=None)
+    user_data = user_fetch_by_pnoneno(phone_no=current_user,password=None)
     userid = user_data.get('userid')
     if not user_data.get('is_admin'):
         return jsonify({"error":"U dont have access to do it"})
 
     user_name = request.form.get('username')
     phone_no = request.form.get('phone_number')
-    password,email = None,None
+    password,email = 1234,None
+
     connection = connection_pool.get_connection()
     try:
         with connection.cursor() as cursor:
             cursor.execute(f'''
                         INSERT INTO {USERS_TABLE} (username, phone_no,
-                            createdby, createdon, updatedby,userpassword, email,updatedon,is_admin)
-                        VALUES (%s, %s, %s, CURRENT_TIMESTAMP, NULL,NULL,NULL,NULL, NULL)
-                        ''', (user_name,phone_no, userid))
+                            createdby, userpassword, createdon, updatedby, email,updatedon,is_admin)
+                        VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, NULL, NULL, NULL, NULL)
+                        ''', (user_name,phone_no, userid,password))
         connection.commit()
 
         # after successfully added the users to users table---> adding in team_membesr
