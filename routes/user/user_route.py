@@ -206,13 +206,12 @@ def login():
 @user.route('/AddExpense', methods=['GET','POST'])
 @login_required
 def add_expenses(current_user):
-
-    user_data = user_fetch_by_pnoneno(phone_no=current_user,password=None)
-    print(user_data)
-    user_id = user_data.get('userid')
-    phone_no  = user_data.get('phone_no')
-
     if request.method == 'GET':
+        user_data = user_fetch_by_pnoneno(phone_no=current_user,password=None)
+        print(user_data)
+        user_id = user_data.get('userid')
+        phone_no  = user_data.get('phone_no')
+
         print('inside GET method')
         # all_expenses = fetch_expenses_by_team(team_id,is_approved=None)
         all_expenses  = fetch_expenses_for_user(user_id=user_id)
@@ -224,7 +223,7 @@ def add_expenses(current_user):
                     "error":None,
                     "data":resp
                 })
-    else:
+    if request.method == 'POST':
         expense_type = request.form.get('expense_type')
         amount = request.form.get('amount_paid')
         description = request.form.get('description')

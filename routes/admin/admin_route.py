@@ -84,7 +84,8 @@ def create_group(current_user):
 @admin.route('/ApproveTheExpense',methods=['GET','POST'])
 @login_required
 def approve_expenses(current_user):
-    user_data = user_fetch(username=current_user, password=None)
+    # user_data = user_fetch(username=current_user, password=None)
+    user_data = user_fetch_by_pnoneno(phone_no=current_user,password=None)
     if not user_data.get('is_admin'):
         return jsonify({"error":"U dont have access to do it"})
     if request.method == 'GET':
